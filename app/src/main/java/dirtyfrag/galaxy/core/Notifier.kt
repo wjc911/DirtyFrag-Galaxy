@@ -21,6 +21,15 @@ object Notifier {
     private const val CHANNEL_ID = "dirtyfrag_root"
     private const val ID_GRANT = 2001
 
+    /** Launcher component of the resolved manager (<package>.ui.MainActivity for all families). */
+    private fun managerComponent(ctx: Context): ComponentName {
+        val mgr = Managers.resolve(ctx)
+        return ComponentName(mgr.pkg, "${mgr.pkg}.ui.MainActivity")
+    }
+
+    /** "KernelSU" or "KernelSU Next" for the active manager. */
+    private fun managerLabel(ctx: Context): String = Managers.resolve(ctx).backend.label
+
     fun ensureChannel(ctx: Context) {
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
@@ -40,9 +49,7 @@ object Notifier {
 
         val openManager = PendingIntent.getActivity(
             ctx, 1,
-            Intent().setComponent(
-                ComponentName(KERNELSU_PKG, "$KERNELSU_PKG.ui.MainActivity")
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            Intent().setComponent(managerComponent(ctx)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val openApp = PendingIntent.getActivity(
@@ -54,8 +61,8 @@ object Notifier {
         val notif = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(ctx.getString(R.string.notif_grant_title))
-            .setContentText(ctx.getString(R.string.notif_grant_text))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(ctx.getString(R.string.notif_grant_text)))
+            .setContentText(ctx.getString(R.string.notif_grant_text, managerLabel(ctx)))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(ctx.getString(R.string.notif_grant_text, managerLabel(ctx))))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(openApp)
@@ -85,9 +92,7 @@ object Notifier {
 
         val openManager = PendingIntent.getActivity(
             ctx, 3,
-            Intent().setComponent(
-                ComponentName(KERNELSU_PKG, "$KERNELSU_PKG.ui.MainActivity")
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            Intent().setComponent(managerComponent(ctx)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val openApp = PendingIntent.getActivity(
@@ -97,7 +102,7 @@ object Notifier {
         )
 
         val title = ctx.getString(R.string.notif_module_title)
-        val text = ctx.getString(R.string.notif_module_text)
+        val text = ctx.getString(R.string.notif_module_text, managerLabel(ctx))
         val notif = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)

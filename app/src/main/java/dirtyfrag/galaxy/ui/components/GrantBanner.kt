@@ -31,6 +31,7 @@ import dirtyfrag.galaxy.ui.theme.Warning
 @Composable
 fun GrantBanner(
     visible: Boolean,
+    managerLabel: String,
     onOpenManager: () -> Unit,
     onRecheck: () -> Unit,
     modifier: Modifier = Modifier
@@ -48,7 +49,7 @@ fun GrantBanner(
         ) {
             Text("루트 권한이 필요합니다", style = MaterialTheme.typography.titleMedium, color = Warning)
             Text(
-                "KernelSU 매니저 > 슈퍼유저 에서 이 앱(dirtyfrag.galaxy)의 ROOT 스위치를 켜세요.",
+                "$managerLabel 매니저 > 슈퍼유저 에서 이 앱(dirtyfrag.galaxy)의 ROOT 스위치를 켜세요.",
                 style = MaterialTheme.typography.bodySmall, color = TextSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )

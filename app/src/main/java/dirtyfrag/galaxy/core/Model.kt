@@ -33,7 +33,7 @@ enum class StepState { PENDING, ACTIVE, DONE, FAILED }
 
 data class StepStatus(val step: RootStep, val state: StepState, val detail: String = "")
 
-enum class ModuleKind(val label: String) { MANAGER("KernelSU"), LSPOSED("LSPosed"), ZYGISK("Zygisk-Next") }
+enum class ModuleKind(val label: String) { MANAGER("매니저"), LSPOSED("LSPosed"), ZYGISK("Zygisk") }
 
 enum class ModuleState { NOT_INSTALLED, INSTALLED, FAILED }
 
@@ -70,7 +70,8 @@ fun rootSteps(
     suGranted: Boolean,
     modulesOk: Boolean,
     rootPresent: Boolean,
-    health: List<HealthStatus>
+    health: List<HealthStatus>,
+    managerLabel: String = "KernelSU"
 ): List<StepStatus> {
     val byHealth = health.associateBy { it.health }
     fun ok(h: Health) = byHealth[h]?.ok == true
@@ -115,7 +116,7 @@ fun rootSteps(
                 stage == RootStage.S2_ROOTED_MODULES_MISSING -> StepState.ACTIVE
                 else -> StepState.PENDING
             },
-            if (modulesOk) "3개 모두 감지" else if (stage == RootStage.S2_ROOTED_MODULES_MISSING) "KernelSU 매니저에서 설치" else ""
+            if (modulesOk) "3개 모두 감지" else if (stage == RootStage.S2_ROOTED_MODULES_MISSING) "$managerLabel 매니저에서 설치" else ""
         ),
         // SELinux is informational: some devices (e.g. SM-S931N / 6.6.98) complete
         // root + Zygisk + LSPosed while fully Enforcing, so it must never fail S7.

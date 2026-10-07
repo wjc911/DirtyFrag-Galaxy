@@ -22,11 +22,11 @@
     <string name="auto_soft_sub">Soft restart automatically after verification</string>
     <string name="notif_channel_name">Root requests</string>
     <string name="notif_channel_auto">Root automation</string>
-    <string name="notif_channel_desc">KernelSU root grant and activation status</string>
+    <string name="notif_channel_desc">KernelSU / KernelSU Next root grant and activation status</string>
     <string name="notif_grant_title">Root permission required</string>
-    <string name="notif_grant_text">Turn on ROOT for "DirtyFrag Galaxy" in KernelSU manager &gt; Superuser, then return to the app.</string>
+    <string name="notif_grant_text">Turn on ROOT for "DirtyFrag Galaxy" in %1$s manager &gt; Superuser, then return to the app.</string>
     <string name="notif_module_title">Module installation required</string>
-    <string name="notif_module_text">In KernelSU manager → Modules, install:\n· Zygisk-Next\n· LSPosed\n(root is already active)</string>
+    <string name="notif_module_text">In %1$s manager → Modules, install:\n· Zygisk-Next\n· LSPosed\n(root is already active)</string>
     <string name="notif_open_manager">Open manager</string>
     <string name="notif_channel_action">Activation</string>
     <string name="notif_restart_title">Soft restart required</string>

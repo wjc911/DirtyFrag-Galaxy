@@ -47,6 +47,7 @@ fun LogScreen(vm: RootViewModel, modifier: Modifier = Modifier) {
     val lines by LogBus.lines.collectAsStateWithLifecycle()
     val steps by vm.steps.collectAsStateWithLifecycle()
     val stage by vm.stage.collectAsStateWithLifecycle()
+    val manager by vm.manager.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scroll = rememberScrollState()
 
@@ -76,6 +77,7 @@ fun LogScreen(vm: RootViewModel, modifier: Modifier = Modifier) {
 
         GrantBanner(
             visible = stage == RootStage.S3_AWAITING_ROOT_GRANT,
+            managerLabel = manager.backend.label,
             onOpenManager = { vm.openManager() },
             onRecheck = { vm.recheckGrant() },
             modifier = Modifier.padding(top = 10.dp)

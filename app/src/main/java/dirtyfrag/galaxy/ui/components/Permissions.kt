@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import dirtyfrag.galaxy.core.Managers
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +63,7 @@ fun rememberOverlayGranted(): Boolean {
 
 @Composable
 fun OverlayPermissionDialog(onAllow: () -> Unit, onDismiss: () -> Unit) {
+    val label = Managers.resolve(LocalContext.current).backend.label
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Surface2,
@@ -69,7 +71,7 @@ fun OverlayPermissionDialog(onAllow: () -> Unit, onDismiss: () -> Unit) {
         text = {
             Text(
                 "부팅 시 자동 루팅을 쓰려면 이 권한이 필요합니다.\n\n" +
-                    "콜드 부팅 직후 su 바이너리는 KernelSU 매니저가 실행될 때 설치됩니다. " +
+                    "콜드 부팅 직후 su 바이너리는 $label 매니저가 실행될 때 설치됩니다. " +
                     "백그라운드 서비스는 이 권한이 있어야 매니저를 열 수 있습니다.\n\n" +
                     "설정 > 특수 접근 > 다른 앱 위에 표시 에서 이 앱을 허용하세요.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -96,7 +98,7 @@ fun OverlayPermissionCard(modifier: Modifier = Modifier) {
         ) {
             Text("다른 앱 위에 표시 (부팅 자동 루팅 필수)", color = TextPrimary)
             Text(
-                if (granted) "✓ 허용됨" else "필요 — 자동 루팅 시 KernelSU 매니저를 열기 위해 필요",
+                if (granted) "✓ 허용됨" else "필요 — 자동 루팅 시 ${Managers.resolve(ctx).backend.label} 매니저를 열기 위해 필요",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (granted) Success else Warning
             )

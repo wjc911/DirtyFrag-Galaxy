@@ -65,6 +65,17 @@ sh_cmd_reboot:
     .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name me.weishu.kernelsu --stage-from /data/system/ksud --ro-partitions & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current; setsid /system/bin/su -c \"/system/bin/su -c '/data/adb/ksud post-fs-data; /data/adb/ksud services; sleep 3; /data/adb/ksud soft-reboot'\""
 
     .balign 4
+    // Runtime-overwritten shell command. exp.c copies the resolved manager
+    // package into this buffer (via libc_cmd_buf_off) so ksud's late-load
+    // restarts the CORRECT manager and it re-acquires a fresh ksu fd.
+    .global libc_cmd_buf_off
+libc_cmd_buf_off:
+    .int cmd_buf - libc_data
+cmd_buf:
+    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name com.rifsxd.ksunext --stage-from /data/system/ksud --ro-partitions & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current"
+    .space 320
+
+    .balign 4
     .global libc_soft_reboot_off
 libc_soft_reboot_off:
     .int soft_reboot_flag - libc_data
@@ -262,23 +273,16 @@ s2_copy_strs_end:
     svc 0
     cbnz w0, myexit
 
-    // x26=1: run soft-reboot at the end; x26=0: stop after services.
-    adr     x9, soft_reboot_flag
-    ldrb    w26, [x9]
-
-    // argv = [sh_path, "-c", cmd, NULL]
+    // argv = [sh_path, "-c", cmd_buf, NULL]
+    // cmd_buf is overwritten at runtime by exp.c with the resolved manager
+    // package so ksud restarts the correct manager (fresh ksu fd after late-load).
     adr     x0, sh_path
     str     x0, [sp]
 
     adr     x0, sh_c_flag
     str     x0, [sp, 8]
 
-    cbz     w26, use_noreboot_cmd
-    adr     x0, sh_cmd_reboot
-    b       set_cmd
-use_noreboot_cmd:
-    adr     x0, sh_cmd_noreboot
-set_cmd:
+    adr     x0, cmd_buf
     str     x0, [sp, 16]
 
     str     xzr, [sp, 24]

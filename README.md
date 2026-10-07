@@ -10,7 +10,7 @@
 
 <p align="center">
   <b>DirtyFrag(CVE-2026-43284)</b> 익스플로잇으로 삼성 갤럭시 기기에<br>
-  <b>원클릭 임시 루트(KernelSU late-load)</b> 를 적용하는 도구입니다.<br>
+  <b>원클릭 임시 루트(KernelSU / KernelSU Next late-load)</b> 를 적용하는 도구입니다.<br>
   <b>Shizuku·PC·ADB 없이</b> 앱에서 익스플로잇부터 KernelSU late-load까지 직접 수행합니다.
 </p>
 
@@ -70,16 +70,17 @@ android17-6.18
 ## 요구사항
 
 * DirtyFrag에 필요한 primitive가 존재하는 **삼성 갤럭시** 기기
-* **[KernelSU 매니저](https://github.com/tiann/KernelSU/releases)** 앱 — 이 앱에 **포함되어 있지 않으므로 별도 설치** (테스트: v3.3.0)
-* (모듈 사용 시 권장) **[Zygisk-Next](https://github.com/LSPosed/ZygiskNext)** (테스트: v1.5.0) · **[LSPosed](https://lsposed.zip)** (테스트: **LSPosed-it v2.2.0 / build 7854**)
+* **[KernelSU 매니저](https://github.com/tiann/KernelSU/releases)** 또는 **[KernelSU Next 매니저](https://github.com/KernelSU-Next/KernelSU-Next/releases)** — 이 앱에 **포함되어 있지 않으므로 별도 설치** (테스트: KernelSU Next v3.4.0 · KernelSU v3.3.0)
+  * **KernelSU Next 표준 빌드와 spoof 빌드(랜덤 패키지명)** 를 **서명 인증서 자동탐지**로 지원합니다.
+* (모듈 사용 시 권장) **[Zygisk-Next](https://github.com/LSPosed/ZygiskNext)** (테스트: v1.5.0) · **[LSPosed](https://lsposed.zip)** (테스트: **LSPosed v2.2.1**)
 * 이 앱은 파티션을 플래시/수정하지 않으므로 **재부팅 시 루트가 풀립니다**(자동 루팅을 켜면 자동 재적용).
 
 ## 사용법
 
-1. **[KernelSU 매니저](https://github.com/tiann/KernelSU/releases)** 앱을 설치합니다(별도).
+1. **[KernelSU 매니저](https://github.com/tiann/KernelSU/releases)** 또는 **[KernelSU Next 매니저](https://github.com/KernelSU-Next/KernelSU-Next/releases)** 앱을 설치합니다(별도).
 2. [Releases](../../releases/latest) 에서 이 앱의 APK를 설치합니다.
 3. 앱을 열고 **루팅** 버튼을 누릅니다. (익스플로잇 → 임시 루트 → KernelSU late-load)
-4. 루트 권한 알림이 뜨면 **KernelSU 매니저 > 슈퍼유저** 에서 이 앱(DirtyFrag Galaxy)의 ROOT 스위치를 켭니다.
+4. 루트 권한 알림이 뜨면 **매니저 > 슈퍼유저** 에서 이 앱(DirtyFrag Galaxy)의 ROOT 스위치를 켭니다.
 
 ### 첫 사용자(모듈 미설치) — 순서 중요
 
@@ -87,7 +88,7 @@ android17-6.18
 
 5. 4단계까지 마치면 앱이 자동으로 모듈을 확인하고, 없으면
    **"모듈 설치가 필요합니다" 알림**(+ "매니저 열기" 버튼)을 띄웁니다.
-   **KernelSU 매니저 → 모듈** 에서 Zygisk-Next, LSPosed(zip)를 설치하세요.
+   **매니저 → 모듈** 에서 Zygisk-Next, LSPosed(zip)를 설치하세요.
 
 6. 앱으로 돌아오면 **자동 감지**됩니다(다시 [루팅]을 누를 필요 없음).
    모듈이 준비되면 **"소프트 재시작이 필요합니다 (LSPosed 정상 작동을 위해)" 알림**이 뜹니다.
@@ -102,16 +103,20 @@ android17-6.18
 
 ## 이 앱만의 특징
 
+* **외부 디스플레이(DeX / 미러링) 오류 수정** — 외부 USB-C 모니터가 연결된 상태에서 소프트 재시작을 하면 디스플레이(DP) 파이프가 고착되어 DeX/미러링이 복귀하지 못하던 문제를 해결했습니다. 프레임워크만 재시작(`killall system_server`)하고, DP park(`hpd 0`) → 재시작 대기 → unpark(`hpd 1`)를 `setsid` 분리 헬퍼로 수행해 모니터가 자동 복귀합니다.
+* **감지 속도 비약적 향상 (5.28s → 1s 이하)** — uid·SELinux·모듈·`system_server` pid·Zygisk·LSPosed 확인을 **단일 `su` 프로브 1회**로 통합하고, `zygiskd status`·**durable LSPosed verbose 로그**를 우선 사용하며, 감지 결과와 매니저 스캔을 캐싱합니다.
 * **Shizuku·PC·ADB 불필요** — 별도의 페어링이나 외부 도구 없이 앱에서 익스플로잇부터 KernelSU late-load까지 직접 수행합니다.
+* **KernelSU / KernelSU Next(표준·spoof) 자동 지원** — 매니저 미설치/스푸핑 여부와 무관하게 **서명 인증서 SHA-256 자동탐지**로 백엔드를 인식하고, 자동 모드에서는 KernelSU Next를 우선 사용합니다.
 * **루팅 성공률 100%** — 현재 검증된 기기에서 **50회 연속 시도 모두 성공**했습니다.
-* **안정적인 소프트 재시작** — 루트 권한을 매니저에서 이 앱에 부여하면 `su` 컨텍스트에서 깔끔하게 모듈 스테이지 + soft reboot 을 수행합니다.
+* **안정적인 소프트 재시작** — 루트 권한을 매니저에서 이 앱에 부여하면 `su` 컨텍스트에서 깔끔하게 모듈 스테이지 + 프레임워크 재시작을 수행합니다. **버튼은 첫 감지 전 "확인 중…"으로 비활성**되고, 이미 활성화(S7) 상태에서는 확인창을 거쳐 실행되어 오작동을 방지합니다.
 * **7개 상태 지표 실시간 검증 + 헬스 패널** — 익스플로잇 / 권한 / 모듈 / SELinux / Zygisk / LSPosed / 재시작 상태.
-* **LSPosed 주입 정확 판정** — `system_server`의 **현재 pid** 기준(`logcat` + lspd verbose, mtime 가드)으로 오탐/부정 제거.
+* **LSPosed 주입 정확 판정** — `system_server`의 **현재 pid** 기준으로 **durable verbose 로그를 우선** 사용하고(부팅 시각 대비 mtime 가드), 없을 때만 0.3초 폴링 → `logcat` fallback으로 확인해 오탐/부정을 제거했습니다.
 * **다중 KO 자동 선택** — KMI와 커널 버전에 맞는 KO를 자동으로 고릅니다.
 * **SELinux 선택화 + 무재부팅 Enforcing 복원** — permissive가 필요 없는 기기는 그대로 동작하고, 필요한 기기(6.12)는 루트·Zygisk·LSPosed 확인 후 **재부팅 없이** SELinux를 `Enforcing`으로 되돌립니다.
 * **부팅 자동 루팅** — 포그라운드 서비스 + 알림으로 재부팅 후 자동 재적용.
 * **첫 사용자 모듈 설치 안내(알림)** — 모듈(Zygisk-Next/LSPosed)이 없어도 **루트까지는 정상 진행**하고, **"모듈 설치가 필요합니다" 알림 + "매니저 열기" 버튼**으로 안내합니다.
 * **자동 감지 + 소프트 재시작 알림** — 매니저에서 돌아오면 **자동 재감지**되고, 루트·모듈이 준비되면 **"소프트 재시작이 필요합니다" 알림(원탭 [지금 소프트 재시작])**이 떠서 바로 진행할 수 있습니다.
+* **미지원 스택은 안내만** — NeoZygisk / Vector 등은 감지 시 **"Zygisk-Next + LSPosed 교체 권장"** 안내만 표시하고 차단하지 않습니다.
 * **로그 탭 / 오로라 비주얼** — 상세 로그와 상태 스냅샷.
 
 ---
@@ -132,6 +137,8 @@ LSPosed 활성화가 필요하면 앱에서 소프트 재시작을 한 번 실�
 * 검증되지 않은 기기나 다른 펌웨어에서는 동일한 결과를 보장하지 않습니다.
 * **미취약 또는 호환되지 않는 커널**에서는 `CBC page-cache primitive is a NO-OP ... Aborting.` 등 patch/primitive 검증 메시지와 함께 중단합니다.
 * 스테이지는 **1회만** 실행됩니다. `ksud unload` 는 절대 사용하지 않습니다(기기 다운 방지).
+* 외부 모니터(DeX/미러링) 연결 시 소프트 재시작은 삼성 DP 컨트롤러용 소프트웨어 재연결(park/unpark)을 함께 수행합니다. 동작 기록은 `/data/local/tmp/dirtyfrag-dp.log` 에 남습니다.
+* **미지원 모듈 스택**(NeoZygisk / Vector 등)은 감지 시 교체 권장 안내만 표시하며, 자동/수동 동작을 차단하지 않습니다. 권장 스택은 **Zygisk-Next + LSPosed**입니다.
 
 ---
 
@@ -172,6 +179,7 @@ JAVA_HOME=/path/to/jdk-17 ./gradlew :app:assembleRelease
 
 개인 배포 또는 별도 릴리스에 사용할 경우에는
 `keystore/testkey.p12`를 **본인의 private release key로 교체하고 signing 설정도 함께 변경**하세요.
+(개인 서명 키 `app/keystore.jks` 등은 커밋하지 않습니다.)
 
 > 공개 testkey는 재현 가능한 빌드를 위한 기본값이며, 공식 배포용 서명 키로 사용하는 것을 목적으로 하지 않습니다.
 
@@ -180,6 +188,7 @@ JAVA_HOME=/path/to/jdk-17 ./gradlew :app:assembleRelease
 | 자산                               | SHA-256 (앞자리)       |
 | -------------------------------- | ------------------- |
 | `assets/ksud`                    | `63046bf5a6409e5f…` |
+| `assets/ksud_next`               | `22fe04db56a7664d…` |
 | `ko/dirtyfrag-android12-5.10.ko` | `8ea7b79bedfba0b5…` |
 | `ko/dirtyfrag-android13-5.10.ko` | `97b09bac363ce6bf…` |
 | `ko/dirtyfrag-android13-5.15.ko` | `43e5669315b5d710…` |
@@ -200,6 +209,7 @@ JAVA_HOME=/path/to/jdk-17 ./gradlew :app:assembleRelease
 * https://github.com/polygraphene/DFReroot — SELinux permissive KO 및 관련 코드 기반
 * https://github.com/combeng6th/DirtyInit — unprivileged XFRM/IPsec 기법
 * https://github.com/tiann/KernelSU — KernelSU userspace (`ksud`)
+* https://github.com/KernelSU-Next/KernelSU-Next — KernelSU Next
 * https://github.com/LSPosed/ZygiskNext — Zygisk-Next
 * https://github.com/LSPosed/LSPosed — LSPosed
 
@@ -214,7 +224,7 @@ JAVA_HOME=/path/to/jdk-17 ./gradlew :app:assembleRelease
 
 번들된 제3자 구성요소는 각각의 원본 라이선스를 따릅니다.
 
-* `assets/ksud` — **GNU GPL-3.0-or-later**
+* `assets/ksud`, `assets/ksud_next` — **GNU GPL-3.0-or-later**
 * `ko/*.ko` — DirtyFrag 관련 upstream 구현을 기반으로 한 커널 모듈. 각 모듈의 실제 소스 출처와 라이선스 상태는 [NOTICE](NOTICE)에 명시합니다.
 * `ko/*.ko`에 대해 upstream에서 명시적인 repository-level 라이선스가 확인되지 않는 경우, 임의로 GPL-2.0 또는 GPL-3.0으로 표기하지 않고 **원본 출처와 라이선스 미지정 상태를 그대로 기록**합니다.
 

@@ -322,6 +322,7 @@ extern uint32_t libc_len;
 extern char libc_first_inst_copy[];
 extern uint32_t libc_ksud_proc_path_off;
 extern uint32_t libc_soft_reboot_off;
+extern uint32_t libc_cmd_buf_off;
 
 int find_hook_target(const char *lib, const char *sym,
                      uint64_t *hook, uint64_t *payload, uint32_t *first_insn);
@@ -564,6 +565,7 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                                                jbyteArray aesCbcKey,
                                                jbyteArray hmacKey, jint icvLen,
                                                jint senderPort, jstring jksudPath,
+                                               jstring jmanagerPkg,
                                                jboolean softReboot) {
     struct Reporter ro = {.env = env, .obj = reporter_obj}, *reporter = &ro;
 
@@ -605,6 +607,27 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                 libc_data[libc_ksud_proc_path_off + 63] = '\0';
                 libc_data[libc_soft_reboot_off] = softReboot ? 1 : 0;
                 REPORTLN("ksud mfd: %s", proc_path);
+
+                // Build the late-load command with the RESOLVED manager package
+                // (KernelSU / KernelSU Next / spoofed). ksud late-load force-stops
+                // and restarts this package so it re-acquires a fresh ksu fd;
+                // otherwise a spoofed manager keeps showing "not installed" until
+                // it is manually force-stopped.
+                if (jmanagerPkg) {
+                    const char *pkg = (*env)->GetStringUTFChars(env, jmanagerPkg, NULL);
+                    if (pkg && *pkg) {
+                        char cmd[512];
+                        snprintf(cmd, sizeof(cmd),
+                                 "exec >/dev/null 2>&1; /system/bin/logcat late-load "
+                                 "--package-name %s --stage-from /data/system/ksud --ro-partitions & sleep 8; "
+                                 "echo u:r:ksu:s0 > /proc/self/attr/current", pkg);
+                        size_t n = strlen(cmd) + 1;
+                        if (n > 480) n = 480;
+                        memcpy(libc_data + libc_cmd_buf_off, cmd, n);
+                        REPORTLN("late-load manager pkg: %s", pkg);
+                    }
+                    if (pkg) (*env)->ReleaseStringUTFChars(env, jmanagerPkg, pkg);
+                }
             }
             close(src);
         }

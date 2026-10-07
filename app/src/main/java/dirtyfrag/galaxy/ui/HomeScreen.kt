@@ -79,6 +79,8 @@ fun HomeScreen(
     val stage by vm.stage.collectAsStateWithLifecycle()
     val steps by vm.steps.collectAsStateWithLifecycle()
     val modules by vm.modules.collectAsStateWithLifecycle()
+    val manager by vm.manager.collectAsStateWithLifecycle()
+    val detecting by vm.detecting.collectAsStateWithLifecycle()
     val health by vm.health.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
     val lines by LogBus.lines.collectAsStateWithLifecycle()
@@ -104,19 +106,20 @@ fun HomeScreen(
                 }
                 Entrance(2) { StageTitle(stage) }
                 Spacer(Modifier.height(4.dp))
-                Entrance(3) { ActionButtons(vm, stage, running, onRootStart) }
+                Entrance(3) { ActionButtons(vm, stage, running, detecting, onRootStart) }
                 GrantBanner(
                     visible = stage == RootStage.S3_AWAITING_ROOT_GRANT,
+                    managerLabel = manager.backend.label,
                     onOpenManager = { vm.openManager() },
                     onRecheck = { vm.recheckGrant() },
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                ModulesGuide(stage, modules) { vm.openManager() }
+                ModulesGuide(stage, modules, manager.backend.label) { vm.openManager() }
             }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 Entrance(0) { StepsSection(steps) }
                 Entrance(1) { HealthSection(health) }
-                Entrance(2) { ModulesSection(modules) }
+                Entrance(2) { ModulesSection(modules, manager.backend.label) }
                 Entrance(3) { Column(Modifier.padding(top = 8.dp)) { LogPreview(lines, onOpenLog) } }
                 Spacer(Modifier.height(24.dp))
             }
@@ -137,9 +140,10 @@ fun HomeScreen(
             }
             Entrance(2) { StageTitle(stage) }
             Spacer(Modifier.height(14.dp))
-            Entrance(3) { ActionButtons(vm, stage, running, onRootStart) }
+            Entrance(3) { ActionButtons(vm, stage, running, detecting, onRootStart) }
             GrantBanner(
                 visible = stage == RootStage.S3_AWAITING_ROOT_GRANT,
+                managerLabel = manager.backend.label,
                 onOpenManager = { vm.openManager() },
                 onRecheck = { vm.recheckGrant() },
                 modifier = Modifier.padding(top = 12.dp)
@@ -147,7 +151,7 @@ fun HomeScreen(
             Spacer(Modifier.height(6.dp))
             Entrance(4) { StepsSection(steps) }
             Entrance(5) { HealthSection(health) }
-            Entrance(6) { ModulesSection(modules) }
+            Entrance(6) { ModulesSection(modules, manager.backend.label) }
             Entrance(7) { Column(Modifier.padding(top = 8.dp)) { LogPreview(lines, onOpenLog) } }
             Spacer(Modifier.height(24.dp))
         }
@@ -211,12 +215,12 @@ private fun HealthSection(health: List<HealthStatus>) {
 }
 
 @Composable
-private fun ModulesSection(modules: List<ModuleStatus>) {
+private fun ModulesSection(modules: List<ModuleStatus>, managerLabel: String) {
     if (modules.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
         SectionTitle("모듈 감지")
         modules.forEach { status ->
-            ModuleCard(status, Modifier.padding(vertical = 4.dp), onClick = null)
+            ModuleCard(status, Modifier.padding(vertical = 4.dp), managerLabel = managerLabel, onClick = null)
         }
     }
 }
@@ -227,7 +231,7 @@ private fun ModulesSection(modules: List<ModuleStatus>) {
  * them resume by pressing ROOT again.
  */
 @Composable
-private fun ModulesGuide(stage: RootStage, modules: List<ModuleStatus>, onOpenManager: () -> Unit) {
+private fun ModulesGuide(stage: RootStage, modules: List<ModuleStatus>, managerLabel: String, onOpenManager: () -> Unit) {
     if (stage != RootStage.S2_ROOTED_MODULES_MISSING) return
     val missing = modules.filter { it.state != ModuleState.INSTALLED }
     val managerMissing = missing.any { it.kind == ModuleKind.MANAGER }
@@ -239,30 +243,31 @@ private fun ModulesGuide(stage: RootStage, modules: List<ModuleStatus>, onOpenMa
         Spacer(Modifier.height(4.dp))
         if (managerMissing) {
             Text(
-                "KernelSU 매니저 앱을 먼저 설치한 뒤, 이 앱에서 다시 [루팅]을 누르세요.",
+                "$managerLabel 매니저 앱을 먼저 설치한 뒤, 이 앱에서 다시 [루팅]을 누르세요.",
                 style = MaterialTheme.typography.bodySmall, color = TextSecondary
             )
         } else {
             Text(
-                "첫 사용자는 지금부터 KernelSU 매니저 > 모듈 에서 Zygisk-Next 와 LSPosed(zip)를 설치하세요. " +
+                "첫 사용자는 지금부터 $managerLabel 매니저 > 모듈 에서 Zygisk-Next 와 LSPosed(zip)를 설치하세요. " +
                     "설치 후 이 화면에서 다시 [루팅]을 누르면 자동으로 계속됩니다.",
                 style = MaterialTheme.typography.bodySmall, color = TextSecondary
             )
         }
         Spacer(Modifier.height(8.dp))
         missing.forEach { m ->
-            Text("•  ${m.kind.label}", style = MaterialTheme.typography.bodySmall, color = TextSecondary,
+            Text("•  ${if (m.kind == ModuleKind.MANAGER) managerLabel else m.kind.label}", style = MaterialTheme.typography.bodySmall, color = TextSecondary,
                 modifier = Modifier.padding(vertical = 1.dp))
         }
         Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = onOpenManager, shape = RoundedCornerShape(14.dp)) {
-            Text("KernelSU 매니저 열기", color = TextPrimary)
+            Text("$managerLabel 매니저 열기", color = TextPrimary)
         }
     }
 }
 
 @Composable
-private fun ActionButtons(vm: RootViewModel, stage: RootStage, running: Boolean, onRootStart: () -> Unit) {
+private fun ActionButtons(vm: RootViewModel, stage: RootStage, running: Boolean, detecting: Boolean, onRootStart: () -> Unit) {
+    var showConfirm by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
@@ -286,10 +291,35 @@ private fun ActionButtons(vm: RootViewModel, stage: RootStage, running: Boolean,
             }
         )
         PressButton(
-            text = "소프트 재시작",
+            text = if (detecting) "확인 중…" else "소프트 재시작",
             primary = false,
-            enabled = !running && File("/dev/df").exists(),
-            onClick = { vm.softRestart() }
+            enabled = !running && !detecting && File("/dev/df").exists(),
+            onClick = {
+                if (stage == RootStage.S7_ACTIVE) showConfirm = true else vm.softRestart()
+            }
+        )
+    }
+
+    if (showConfirm) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("소프트 재시작", color = TextPrimary) },
+            text = {
+                Text(
+                    "이미 활성화된 상태입니다. 그래도 소프트 재시작할까요? (프레임워크가 한 번 재시작됩니다)",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showConfirm = false; vm.softRestart() }) {
+                    Text("재시작", color = TextPrimary)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showConfirm = false }) {
+                    Text("취소", color = TextSecondary)
+                }
+            }
         )
     }
 }
@@ -341,7 +371,7 @@ private fun stageName(stage: RootStage): String = when (stage) {
 private fun stageCaption(stage: RootStage): String = when (stage) {
     RootStage.S0_UNROOTED -> "원클릭 임시 루팅"
     RootStage.S1_ROOTING -> "익스플로잇 진행 중"
-    RootStage.S2_ROOTED_MODULES_MISSING -> "KernelSU 매니저에서 모듈 설치 후 다시 루팅"
+    RootStage.S2_ROOTED_MODULES_MISSING -> "매니저에서 모듈 설치 후 다시 루팅"
     RootStage.S3_AWAITING_ROOT_GRANT -> "매니저에서 이 앱의 ROOT를 허용하세요"
     RootStage.S4_INSTALLING -> "권장 모듈 감지 중"
     RootStage.S5_VERIFYING -> "root / zygisk / lsposed 검증 중"

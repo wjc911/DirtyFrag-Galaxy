@@ -22,11 +22,11 @@
     <string name="auto_soft_sub">검증 후 자동으로 soft restart</string>
     <string name="notif_channel_name">루트 권한 요청</string>
     <string name="notif_channel_auto">루트 자동화</string>
-    <string name="notif_channel_desc">KernelSU 루트 권한 부여 및 활성화 상태</string>
+    <string name="notif_channel_desc">KernelSU / KernelSU Next 루트 권한 부여 및 활성화 상태</string>
     <string name="notif_grant_title">루트 권한이 필요합니다</string>
-    <string name="notif_grant_text">KernelSU 매니저 &gt; 슈퍼유저 에서 "DirtyFrag Galaxy" 의 ROOT 스위치를 켠 뒤 앱으로 돌아오세요.</string>
+    <string name="notif_grant_text">%1$s 매니저 &gt; 슈퍼유저 에서 "DirtyFrag Galaxy" 의 ROOT 스위치를 켠 뒤 앱으로 돌아오세요.</string>
     <string name="notif_module_title">모듈 설치가 필요합니다</string>
-    <string name="notif_module_text">KernelSU 매니저 → 모듈 에서 설치하세요:\n· Zygisk-Next 설치\n· LSPosed 설치\n(루트는 이미 적용됨)</string>
+    <string name="notif_module_text">%1$s 매니저 → 모듈 에서 설치하세요:\n· Zygisk-Next\n· LSPosed\n(루트는 이미 적용됨)</string>
     <string name="notif_open_manager">매니저 열기</string>
     <string name="notif_channel_action">루트 활성화 안내</string>
     <string name="notif_restart_title">소프트 재시작이 필요합니다</string>

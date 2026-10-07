@@ -38,17 +38,19 @@
 
         <receiver
             android:name=".exploit.BootReceiver"
-            android:directBootAware="true"
             android:enabled="false"
             android:exported="false">
             <intent-filter>
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 
         <receiver
             android:name=".exploit.SoftRestartReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".exploit.ActivationReceiver"
             android:exported="false" />
 
         <service

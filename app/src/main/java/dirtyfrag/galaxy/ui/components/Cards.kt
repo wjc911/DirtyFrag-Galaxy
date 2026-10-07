@@ -41,7 +41,7 @@ private fun stateLabel(state: ModuleState): String = when (state) {
 }
 
 @Composable
-fun ModuleCard(status: ModuleStatus, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+fun ModuleCard(status: ModuleStatus, modifier: Modifier = Modifier, managerLabel: String = "매니저", onClick: (() -> Unit)? = null) {
     val color = stateColor(status.state)
     Column(
         modifier
@@ -56,7 +56,10 @@ fun ModuleCard(status: ModuleStatus, modifier: Modifier = Modifier, onClick: (()
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(status.kind.label, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+            Text(
+                if (status.kind == dirtyfrag.galaxy.core.ModuleKind.MANAGER) managerLabel else status.kind.label,
+                style = MaterialTheme.typography.titleMedium, color = TextPrimary
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(8.dp).background(color, RoundedCornerShape(4.dp)))
                 Text("  ${stateLabel(status.state)}", style = MaterialTheme.typography.labelSmall, color = color)

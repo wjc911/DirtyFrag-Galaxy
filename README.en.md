@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  One-click <b>temporary KernelSU root (late-load)</b> for Samsung Galaxy devices<br>
+  One-click <b>temporary KernelSU / KernelSU Next root (late-load)</b> for Samsung Galaxy devices<br>
   via the <b>DirtyFrag (CVE-2026-43284)</b> exploit.<br>
   <b>No Shizuku, no PC, no ADB</b> — the app performs everything from the exploit to KernelSU late-load by itself.
 </p>
@@ -78,17 +78,22 @@ A KO for each KMI above is bundled. This does not guarantee operation on every t
 ## Requirements
 
 * A **Samsung Galaxy** device whose kernel has the DirtyFrag primitive.
-* The **[KernelSU manager](https://github.com/tiann/KernelSU/releases)** app — **not bundled, install separately** (tested v3.3.0).
+* The **[KernelSU manager](https://github.com/tiann/KernelSU/releases)** **or** the
+  **[KernelSU Next manager](https://github.com/KernelSU-Next/KernelSU-Next/releases)** — **not bundled, install separately**
+  (tested: KernelSU Next v3.4.0 · KernelSU v3.3.0).
+  * Both the **standard and the spoof (randomized package name)** KernelSU Next builds are supported via
+    **signing-certificate auto-detection**.
 * (Recommended for modules) **[Zygisk-Next](https://github.com/LSPosed/ZygiskNext)** (tested v1.5.0) ·
-  **[LSPosed](https://lsposed.zip)** (tested **LSPosed-it v2.2.0 / build 7854**).
+  **[LSPosed](https://lsposed.zip)** (tested **LSPosed v2.2.1**).
 * This app does not flash/modify any partition, so **root is lost on reboot** (enable auto-root to re-apply).
 
 ## Usage
 
-1. Install the **[KernelSU manager](https://github.com/tiann/KernelSU/releases)** app (separate).
+1. Install the **[KernelSU manager](https://github.com/tiann/KernelSU/releases)** or the
+   **[KernelSU Next manager](https://github.com/KernelSU-Next/KernelSU-Next/releases)** app (separate).
 2. Install this app's APK from [Releases](../../releases/latest).
 3. Open the app and tap **루팅 (ROOT)**. (exploit → temporary root → KernelSU late-load)
-4. When the root request appears, enable ROOT for this app (DirtyFrag Galaxy) in **KernelSU manager > Superuser**.
+4. When the root request appears, enable ROOT for this app (DirtyFrag Galaxy) in **manager > Superuser**.
 
 ### First run (no modules yet) — order matters
 
@@ -96,7 +101,7 @@ A KO for each KMI above is bundled. This does not guarantee operation on every t
 
 5. After step 4 the app auto-checks modules and, if missing, shows a
    **"Module installation required" notification** (+ an "Open manager" button).
-   In **KernelSU manager → Modules**, install Zygisk-Next and LSPosed (zip).
+   In **manager → Modules**, install Zygisk-Next and LSPosed (zip).
 
 6. Return to the app — it is **auto-detected** (no need to press ROOT again).
    Once modules are ready, a **"Soft restart required (for LSPosed to work)" notification** appears.
@@ -112,13 +117,24 @@ A KO for each KMI above is bundled. This does not guarantee operation on every t
 
 ## Highlights
 
+* **External display (DeX / mirroring) fix** — a soft restart with an external USB-C monitor attached used to
+  wedge the DisplayPort pipe, so DeX/mirroring never came back. Now only the framework is restarted
+  (`killall system_server`), and a `setsid`-detached helper performs a software re-plug
+  (park `hpd 0` → wait for the new framework → unpark `hpd 1`), so the monitor recovers automatically.
+* **Dramatically faster detection (5.28s → under 1s)** — uid / SELinux / modules / `system_server` pid /
+  Zygisk / LSPosed checks are merged into a **single `su` probe**, preferring `zygiskd status` and the
+  **durable LSPosed verbose log**, with per-pass and process-lifetime caching.
 * **No Shizuku / PC / ADB** — no pairing or external tools; the app performs everything from the exploit to KernelSU late-load.
+* **KernelSU / KernelSU Next (standard · spoof) support** — the backend is recognized via
+  **signing-certificate SHA-256 auto-detection** regardless of spoofing, and AUTO mode prefers KernelSU Next.
 * **100% root success** — on verified devices, **50+ consecutive attempts all succeeded**.
-* **Stable soft restart** — once root is granted to this app in the manager, module staging + soft reboot run
-  cleanly from a `su` context.
+* **Stable soft restart** — once root is granted to this app in the manager, module staging + framework
+  restart run cleanly from a `su` context. The button is **disabled as "확인 중…" (checking)** until the first
+  detection completes, and on an already-active (S7) device it asks for confirmation before restarting.
 * **7-state live verification + health panel** — exploit / grant / modules / SELinux / Zygisk / LSPosed / restart.
-* **Accurate LSPosed detection** — based on the **current `system_server` pid** (`logcat` + lspd verbose,
-  mtime-guarded), eliminating false positives/negatives.
+* **Accurate LSPosed detection** — keyed on the **current `system_server` pid**, preferring the **durable
+  verbose log** (mtime-guarded against boot time) and only falling back to 0.3s polling → `logcat`,
+  eliminating false positives/negatives.
 * **Multi-KO auto-select** — picks the KO matching the KMI and kernel version.
 * **Optional permissive + no-reboot Enforcing restore** — devices that do not need permissive just work;
   on devices that do (6.12) SELinux is switched back to `Enforcing` **without a reboot** after root + Zygisk + LSPosed are confirmed.
@@ -127,6 +143,8 @@ A KO for each KMI above is bundled. This does not guarantee operation on every t
   with a **"Module installation required" notification + "Open manager" button**.
 * **Auto-detect + soft-restart notification** — returning from the manager **auto-refreshes** detection, and
   once root + modules are ready a **"Soft restart required" notification (one-tap [Soft restart now])** appears.
+* **Unsupported stacks are guidance-only** — NeoZygisk / Vector are shown with a
+  **"switch to Zygisk-Next + LSPosed"** recommendation and are never blocked.
 * **Log tab / aurora visuals** — detailed logs and status snapshots.
 
 ---
@@ -148,6 +166,10 @@ When LSPosed activation is needed, run a soft restart once in the app.
 * On a **non-vulnerable or incompatible kernel**, it stops with patch/primitive verification messages such as
   `CBC page-cache primitive is a NO-OP ... Aborting.`.
 * The stage runs **once only**. `ksud unload` is never used (it hard-locks the device).
+* With an external monitor (DeX/mirroring) attached, a soft restart also performs the Samsung DP software
+  re-plug (park/unpark). The trace is written to `/data/local/tmp/dirtyfrag-dp.log`.
+* **Unsupported module stacks** (NeoZygisk / Vector, …) only produce a replacement recommendation; they never
+  block automatic or manual operation. The recommended stack is **Zygisk-Next + LSPosed**.
 
 ---
 
@@ -186,7 +208,7 @@ The release APK is signed with the **AOSP testkey** committed in this repo
 (`keystore/testkey.p12`, alias `testkey`, password `android`), so anyone can rebuild it with the same key.
 
 For personal distribution or a separate release, **replace `keystore/testkey.p12` with your own private
-release key and update the signing config accordingly.**
+release key and update the signing config accordingly.** (Private keys such as `app/keystore.jks` are never committed.)
 
 > The public testkey is a default for reproducible builds and is not intended as a signing key for official distribution.
 
@@ -195,6 +217,7 @@ release key and update the signing config accordingly.**
 | Asset | SHA-256 (prefix) |
 | --- | --- |
 | `assets/ksud` | `63046bf5a6409e5f…` |
+| `assets/ksud_next` | `22fe04db56a7664d…` |
 | `ko/dirtyfrag-android12-5.10.ko` | `8ea7b79bedfba0b5…` |
 | `ko/dirtyfrag-android13-5.10.ko` | `97b09bac363ce6bf…` |
 | `ko/dirtyfrag-android13-5.15.ko` | `43e5669315b5d710…` |
@@ -215,6 +238,7 @@ This project is based on the following open source and research:
 * https://github.com/polygraphene/DFReroot — SELinux permissive KO and related code
 * https://github.com/combeng6th/DirtyInit — unprivileged XFRM/IPsec technique
 * https://github.com/tiann/KernelSU — KernelSU userspace (`ksud`)
+* https://github.com/KernelSU-Next/KernelSU-Next — KernelSU Next
 * https://github.com/LSPosed/ZygiskNext — Zygisk-Next
 * https://github.com/LSPosed/LSPosed — LSPosed
 
@@ -229,7 +253,7 @@ See [LICENSE](LICENSE).
 
 Bundled third-party components remain under their respective original licenses.
 
-* `assets/ksud` — **GNU GPL-3.0-or-later**
+* `assets/ksud`, `assets/ksud_next` — **GNU GPL-3.0-or-later**
 * `ko/*.ko` — kernel modules based on the DirtyFrag-related upstream implementation. The actual source
   provenance and license status of each module are described in [NOTICE](NOTICE).
 * Where no explicit repository-level license is identified upstream for `ko/*.ko`, we do not arbitrarily
