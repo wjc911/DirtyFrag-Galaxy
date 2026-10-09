@@ -117,7 +117,7 @@ jobs:
             ARCH=arm64 LLVM=1 CONFIG_KSU=m \
             CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y \
             KCFLAGS="-I$GITHUB_WORKSPACE/opd-out/security/selinux -Wno-unused-variable" \
-            KBUILD_EXTRA_SYMBOLS="$GITHUB_WORKSPACE/opd-inputs/vmlinux.symvers" modules
+            KBUILD_MODPOST_WARN=1 modules
           llvm-objcopy --strip-unneeded \
             -R .comment -R .note.gnu.build-id -R .note.gnu.property \
             -R .note.Linux -R .note.GNU-stack -R .BTF -R .BTF.base \
