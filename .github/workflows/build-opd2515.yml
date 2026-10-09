@@ -67,14 +67,40 @@ jobs:
           grep -F 'name=dfroot' out/dirtyfrag-opd2515-strings.txt
           sha256sum out/dirtyfrag-opd2515-6.12.ko
 
+      - name: Checkout and patch KernelSU for managerless bootstrap
+        run: |
+          git clone --depth 1 --branch v3.3.0 https://github.com/tiann/KernelSU.git kernelsu
+          git -C kernelsu apply "$GITHUB_WORKSPACE/tools/kernelsu-oneapk.patch"
+
+      - name: Build exact managerless KernelSU LKM
+        run: |
+          make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" \
+            M="$GITHUB_WORKSPACE/kernelsu/kernel" \
+            src="$GITHUB_WORKSPACE/kernelsu/kernel" \
+            ARCH=arm64 LLVM=1 CONFIG_KSU=m \
+            CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y \
+            KBUILD_EXTRA_SYMBOLS="$GITHUB_WORKSPACE/opd-out/Module.symvers" modules
+          llvm-objcopy --strip-unneeded \
+            -R .comment -R .note.gnu.build-id -R .note.gnu.property \
+            -R .note.Linux -R .note.GNU-stack -R .BTF -R .BTF.base \
+            -R .llvm_addrsig -R .hyp.text -R .hyp.bss -R .hyp.rodata \
+            -R .hyp.event_ids -R .hyp.patchable_function_entries \
+            -R .hyp.data kernelsu/kernel/kernelsu.ko
+          cp kernelsu/kernel/kernelsu.ko out/android16-6.12_kernelsu.ko
+          strings out/android16-6.12_kernelsu.ko | tee out/android16-6.12_kernelsu-strings.txt
+          grep -F "vermagic=$OPD_KERNEL_RELEASE" out/android16-6.12_kernelsu-strings.txt
+          sha256sum out/android16-6.12_kernelsu.ko
+
       - uses: actions/upload-artifact@v4
         with:
           name: dirtyfrag-galaxy-opd2515-ko
           path: |
             out/dirtyfrag-opd2515-6.12.ko
             out/dirtyfrag-opd2515-strings.txt
+            out/android16-6.12_kernelsu.ko
+            out/android16-6.12_kernelsu-strings.txt
 
-  build-apk:
+  build-ksud-oneapk:
     needs: build-exact-ko
     runs-on: ubuntu-latest
     steps:
@@ -83,8 +109,71 @@ jobs:
         with:
           name: dirtyfrag-galaxy-opd2515-ko
           path: out
+      - name: Checkout patched KernelSU userspace
+        run: |
+          git clone --depth 1 --branch v3.3.0 https://github.com/tiann/KernelSU.git kernelsu
+          git -C kernelsu apply "$GITHUB_WORKSPACE/tools/kernelsu-oneapk.patch"
+      - name: Stage exact KernelSU assets
+        run: |
+          mkdir -p kernelsu/userspace/ksud/bin/aarch64
+          cp out/android16-6.12_kernelsu.ko \
+            kernelsu/userspace/ksud/bin/aarch64/android16-6.12_kernelsu.ko
+          curl --fail --retry 5 --retry-delay 2 -L \
+            https://github.com/tiann/KernelSU/releases/download/v3.3.0/ksuinit-aarch64 \
+            -o kernelsu/userspace/ksud/bin/aarch64/ksuinit
+          chmod 0755 kernelsu/userspace/ksud/bin/aarch64/ksuinit
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r29
+      - name: Build managerless ksud
+        working-directory: kernelsu
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          KSU_PACKAGE_NAME: dirtyfrag.galaxy
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+        run: |
+          sed -i 's#https://github.com/Kernel-SU/adb_client#https://github.com/cocool97/adb_client#g' \
+            userspace/ksud/Cargo.toml
+          sed -i 's#https://github.com/Kernel-SU/java-properties.git#https://github.com/KernelSU-Next/java-properties.git#g' \
+            userspace/ksud/Cargo.toml
+          sed -i 's#https://github.com/Kernel-SU/ksu_props#https://github.com/5ec1cff/resetprop-rs#g' \
+            userspace/ksud/Cargo.toml
+          sed -i 's#https://github.com/Kernel-SU/rustix#https://github.com/KernelSU-Next/rustix#g' \
+            userspace/ksud/Cargo.toml
+          rustup update stable
+          rustup target add aarch64-linux-android
+          source .github/scripts/setup-rust-build.sh aarch64-linux-android 26
+          cargo build --target "$TRIPLE" --release --manifest-path ./userspace/ksud/Cargo.toml
+          cp "target/$TRIPLE/release/ksud" "$GITHUB_WORKSPACE/ksud-oneapk"
+          chmod 0755 "$GITHUB_WORKSPACE/ksud-oneapk"
+          file "$GITHUB_WORKSPACE/ksud-oneapk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ksud-opd2515-oneapk
+          path: ksud-oneapk
+
+  build-apk:
+    needs: [build-exact-ko, build-ksud-oneapk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dirtyfrag-galaxy-opd2515-ko
+          path: out
+      - uses: actions/download-artifact@v4
+        with:
+          name: ksud-opd2515-oneapk
+          path: out/ksud
       - name: Install exact OPD2515 module into the APK
-        run: cp out/dirtyfrag-opd2515-6.12.ko app/src/main/jni/ko/dirtyfrag-android16-6.12.ko
+        run: |
+          cp out/dirtyfrag-opd2515-6.12.ko app/src/main/jni/ko/dirtyfrag-android16-6.12.ko
+          cp out/ksud/ksud-oneapk app/src/main/assets/ksud
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

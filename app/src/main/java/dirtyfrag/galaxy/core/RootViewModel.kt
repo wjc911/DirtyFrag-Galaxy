@@ -110,6 +110,16 @@ class RootViewModel(app: Application) : AndroidViewModel(app) {
         override fun isCancelled(): Boolean = cancelled
     }
 
+    /** Managerless OPD2515 experiment.  Keep the check identical to the native
+     * runner so a user cannot accidentally select the one-APK path on another
+     * device or on a different kernel build. */
+    private fun isOpdOneApk(app: Application): Boolean {
+        val d = verifier.device()
+        return d.model == "OPD2515" &&
+                d.kernel.contains("6.12.58-android16-6-g7704a1ae279b") &&
+                app.packageName == "dirtyfrag.galaxy"
+    }
+
     init {
         LogBus.log("[*] DirtyFrag Galaxy 준비")
         syncBootReceiver()
@@ -391,9 +401,11 @@ class RootViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun runFlow() {
         val opts = _options.value
         val app = getApplication<Application>()
-        val mgr = Managers.resolve(app)
+        val oneApk = isOpdOneApk(app)
+        val mgr = if (oneApk) ManagerInfo(app.packageName, RootBackend.KERNELSU)
+        else Managers.resolve(app)
         _manager.value = mgr
-        val mlabel = mgr.backend.label
+        val mlabel = if (oneApk) "내장 KernelSU" else mgr.backend.label
         LogBus.log("[*] 백엔드: $mlabel · 매니저 ${mgr.pkg}${if (mgr.spoof) " (spoof)" else ""}")
 
         // 0 — kernel exploit.
@@ -421,12 +433,33 @@ class RootViewModel(app: Application) : AndroidViewModel(app) {
         // Only nag about the grant when su is actually unavailable. If it is already
         // granted (allowlist persisted) we must not post a misleading "grant required".
         if (!suGranted && !grantNotified) { grantNotified = true; Notifier.grantRequest(app) }
-        if (!PostRoot.ensureSu(app, mgr.pkg, reporter, canceller)) {
+        val suOk = if (oneApk) {
+            PostRoot.ensureSu(app, mgr.pkg, reporter, canceller, 8_000L, false)
+        } else {
+            PostRoot.ensureSu(app, mgr.pkg, reporter, canceller)
+        }
+        if (!suOk) {
             markStep(1, StepState.ACTIVE, "권한 미허용 — 매니저에서 ROOT 스위치 ON")
             LogBus.log("[!] 루트 권한 미허용 — 매니저에서 이 앱의 ROOT를 켜세요")
             return
         }
         markStep(1, StepState.DONE, "su 허용됨")
+
+        // The one-APK experiment ends after the clean su proof.  It deliberately
+        // does not require Zygisk/LSPosed or a separately installed manager.
+        if (oneApk) {
+            val snap = verifier.snapshot(deep = false)
+            val rootH = verifier.root(snap)
+            _health.value = listOf(rootH)
+            markStep(2, StepState.DONE, "내장 경로 — 외부 모듈 불필요")
+            markStep(3, StepState.DONE, rootH.detail)
+            markStep(4, StepState.DONE, "내장 경로")
+            markStep(5, StepState.DONE, "내장 경로")
+            markStep(6, StepState.DONE, "내장 경로")
+            _stage.value = if (rootH.ok) RootStage.S7_ACTIVE else RootStage.S6_READY_SOFT_RESTART
+            LogBus.log(if (rootH.ok) "[+] managerless one-APK root confirmed" else "[!] managerless su probe failed")
+            return
+        }
 
         // 2 — detect recommended modules (no install from app).
         _stage.value = RootStage.S4_INSTALLING

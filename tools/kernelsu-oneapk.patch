@@ -1,0 +1,171 @@
+diff --git a/kernel/core/init.c b/kernel/core/init.c
+index e9cd102..26b01ec 100644
+--- a/kernel/core/init.c
++++ b/kernel/core/init.c
+@@ -72,6 +72,8 @@ __attribute__((naked)) int __init kernelsu_init_early(void)
+ 
+ struct cred *ksu_cred;
+ bool ksu_late_loaded;
++int ksu_bootstrap_uid = -1;
++module_param_named(bootstrap_uid, ksu_bootstrap_uid, int, 0);
+ 
+ #ifdef CONFIG_KSU_DEBUG
+ bool allow_shell = true;
+diff --git a/kernel/include/ksu.h b/kernel/include/ksu.h
+index 95c9edb..78f69cf 100644
+--- a/kernel/include/ksu.h
++++ b/kernel/include/ksu.h
+@@ -9,6 +9,9 @@
+ 
+ extern struct cred *ksu_cred;
+ extern bool ksu_late_loaded;
++/* Optional one-APK bootstrap UID.  Set only by the app's freshly loaded
++ * module parameter; it is intentionally unset by default. */
++extern int ksu_bootstrap_uid;
+ extern bool allow_shell;
+ extern struct selinux_policy *backup_sepolicy;
+ extern bool ksu_no_custom_rc;
+diff --git a/kernel/policy/allowlist.c b/kernel/policy/allowlist.c
+index 8cf50d6..ed3de02 100644
+--- a/kernel/policy/allowlist.c
++++ b/kernel/policy/allowlist.c
+@@ -261,6 +261,13 @@ bool __ksu_is_allow_uid(uid_t uid)
+         return false;
+     }
+ 
++    // One-APK late-load bootstrap: the app passes its own UID as a module
++    // parameter before the module is initialized.  This avoids requiring a
++    // separately installed manager while leaving the default unset (-1).
++    if (unlikely(ksu_bootstrap_uid >= 0 && uid == (uid_t)ksu_bootstrap_uid)) {
++        return true;
++    }
++
+     if (unlikely(is_uid_manager(uid))) {
+         // manager is always allowed!
+         return true;
+@@ -302,6 +309,9 @@ bool ksu_uid_should_umount(uid_t uid)
+     if (unlikely(uid == WEBVIEW_ZYGOTE_UID)) {
+         return ksu_webview_zygote_umount_enabled;
+     }
++    if (unlikely(ksu_bootstrap_uid >= 0 && uid == (uid_t)ksu_bootstrap_uid)) {
++        return false;
++    }
+ #ifdef CONFIG_KSU_DISABLE_POLICY
+     return !__ksu_is_allow_uid(uid);
+ #else
+diff --git a/userspace/ksud/src/cli.rs b/userspace/ksud/src/cli.rs
+index 49ca63d..b18af29 100644
+--- a/userspace/ksud/src/cli.rs
++++ b/userspace/ksud/src/cli.rs
+@@ -63,6 +63,10 @@ enum Commands {
+         /// manager package name
+         #[arg(long, default_value_t = String::from(defs::DEFAULT_PACKAGE_NAME))]
+         package_name: String,
++
++        /// UID of the embedding app for the managerless one-APK bootstrap
++        #[arg(long)]
++        bootstrap_uid: Option<u32>,
+     },
+ 
+     /// Emulate system reboot
+@@ -641,6 +645,7 @@ pub fn run() -> Result<()> {
+             post_magica,
+             kmi,
+             package_name,
++            bootstrap_uid,
+         } => {
+             if let Some(port) = magica {
+                 return crate::magica::run(port, &package_name, allow_shell).map_err(|e| {
+@@ -648,7 +653,7 @@ pub fn run() -> Result<()> {
+                     e
+                 });
+             }
+-            let result = crate::late_load::run(&package_name, kmi, allow_shell);
++            let result = crate::late_load::run(&package_name, kmi, allow_shell, bootstrap_uid);
+             if post_magica {
+                 info!("Restoring adb properties (post-magica cleanup)...");
+                 if let Err(e) = crate::magica::disable_adb_root() {
+diff --git a/userspace/ksud/src/late_load.rs b/userspace/ksud/src/late_load.rs
+index 8e6f0fe..40e2c68 100644
+--- a/userspace/ksud/src/late_load.rs
++++ b/userspace/ksud/src/late_load.rs
+@@ -1,6 +1,6 @@
+ use anyhow::{Context, Result};
+ use log::{info, warn};
+-use rustix::cstr;
++use std::ffi::CString;
+ use std::process::Command;
+ 
+ use crate::module::{handle_updated_modules, prune_modules};
+@@ -35,7 +35,12 @@ fn dump_process_info(label: &str) {
+     );
+ }
+ 
+-pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Result<()> {
++pub fn run(
++    package_name: &String,
++    kmi: Option<String>,
++    allow_shell: bool,
++    bootstrap_uid: Option<u32>,
++) -> Result<()> {
+     utils::daemonize(false)?;
+     info!("late-load command triggered!");
+     dump_process_info("late-load start");
+@@ -58,12 +63,18 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
+ 
+         // 4. Load kernelsu.ko from memory with manual relocation
+         info!("Loading kernelsu.ko for KMI {kmi}...");
+-        let params = if allow_shell {
+-            cstr!("allow_shell=1")
+-        } else {
+-            cstr!("")
+-        };
+-        ksuinit::load_module(&ko_data, params).context("Failed to load kernelsu.ko")?;
++        let mut param_string = String::new();
++        if allow_shell {
++            param_string.push_str("allow_shell=1");
++        }
++        if let Some(uid) = bootstrap_uid {
++            if !param_string.is_empty() {
++                param_string.push(' ');
++            }
++            param_string.push_str(&format!("bootstrap_uid={uid}"));
++        }
++        let params = CString::new(param_string)?;
++        ksuinit::load_module(&ko_data, params.as_c_str()).context("Failed to load kernelsu.ko")?;
+         info!("kernelsu.ko loaded successfully!");
+         dump_process_info("after load_module");
+     }
+@@ -130,17 +141,21 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
+     init_event::run_stage("boot-completed", false);
+ 
+     // 14. Restart Manager so it gets a fresh ksu fd from the newly loaded kernel module
+-    info!("Restarting KernelSU Manager {package_name}...");
+-    let _ = Command::new("am")
+-        .args(["force-stop", package_name])
+-        .status();
+-    let _ = Command::new("am")
+-        .args([
+-            "start",
+-            "-n",
+-            &format!("{package_name}/me.weishu.kernelsu.ui.MainActivity"),
+-        ])
+-        .status();
++    if package_name != "dirtyfrag.galaxy" {
++        info!("Restarting KernelSU Manager {package_name}...");
++        let _ = Command::new("am")
++            .args(["force-stop", package_name])
++            .status();
++        let _ = Command::new("am")
++            .args([
++                "start",
++                "-n",
++                &format!("{package_name}/me.weishu.kernelsu.ui.MainActivity"),
++            ])
++            .status();
++    } else {
++        info!("Managerless one-APK bootstrap: leaving embedding app alive");
++    }
+ 
+     Ok(())
+ }
