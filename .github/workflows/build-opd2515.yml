@@ -26,11 +26,13 @@ jobs:
 
       - name: Fetch exact Android common kernel source
         run: |
-          git clone --filter=blob:none --no-checkout --single-branch --branch android16-6.12 \
-            https://android.googlesource.com/kernel/common opd-kernel
-          git -C opd-kernel fetch --depth=1 origin "$OPD_KERNEL_COMMIT"
-          git -C opd-kernel checkout --detach "$OPD_KERNEL_COMMIT"
-          test "$(git -C opd-kernel rev-parse HEAD)" = "$OPD_KERNEL_COMMIT"
+          mkdir -p opd-kernel
+          curl --fail --retry 8 --retry-delay 3 -L \
+            "https://android.googlesource.com/kernel/common/+archive/${OPD_KERNEL_COMMIT}.tar.gz" \
+            | tar -xz -C opd-kernel
+          printf '%s\n' "$OPD_KERNEL_COMMIT" > opd-kernel/.source-commit
+          test -f opd-kernel/Makefile
+          test "$(cat opd-kernel/.source-commit)" = "$OPD_KERNEL_COMMIT"
 
       - name: Fetch exact OPD2515 GKI build inputs
         run: |
