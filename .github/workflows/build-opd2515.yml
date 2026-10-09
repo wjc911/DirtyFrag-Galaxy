@@ -255,7 +255,9 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
       - name: Build OPD2515 candidate APK
-        run: ./gradlew :app:assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: DirtyFrag-Galaxy-OPD2515-debug
