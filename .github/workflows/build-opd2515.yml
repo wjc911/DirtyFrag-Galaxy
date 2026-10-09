@@ -49,7 +49,10 @@ jobs:
           cp opd-inputs/.config opd-out/.config
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 olddefconfig modules_prepare
           cp opd-inputs/vmlinux.symvers opd-out/Module.symvers
-          test "$(make -s -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 kernelrelease)" = "$OPD_KERNEL_RELEASE"
+          actual_release="$(make -s -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 kernelrelease)"
+          echo "expected kernel release: $OPD_KERNEL_RELEASE"
+          echo "actual kernel release:   $actual_release"
+          test "$actual_release" = "$OPD_KERNEL_RELEASE"
 
       - name: Build and verify exact OPD2515 module
         run: |
