@@ -64,6 +64,12 @@ jobs:
 
       - name: Build and verify exact OPD2515 module
         run: |
+          # The standalone source archive does not carry Kleaf's generated
+          # GKI protected-module list.  The plain external-module Kbuild path
+          # still declares it as an input when MODULE_SIG_PROTECT is enabled;
+          # an empty list preserves the vendor GKI config while allowing the
+          # out-of-tree module to be checked against the supplied Module.symvers.
+          : > opd-kernel/protected_module_names_list
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" M="$GITHUB_WORKSPACE/lkm" \
             ARCH=arm64 LLVM=1 KBUILD_EXTRA_SYMBOLS="$GITHUB_WORKSPACE/opd-out/Module.symvers" modules
           llvm-objcopy --strip-unneeded \
