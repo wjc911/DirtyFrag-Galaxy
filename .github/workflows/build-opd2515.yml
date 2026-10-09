@@ -65,11 +65,17 @@ jobs:
           echo "actual kernel release:   $actual_release"
           test "$actual_release" = "$OPD_KERNEL_RELEASE"
           # External modules include SELinux's generated private headers, but
-          # a source archive plus modules_prepare does not build them.  Build
-          # the exact pair from this tree and expose the output directory to
-          # the KernelSU module compile below.
+          # a source archive plus modules_prepare does not build them.  The
+          # GKI config may leave CONFIG_SECURITY_SELINUX unset, in which case
+          # security/selinux/selinux.o has no Kbuild target at all.  Generate
+          # the two headers directly with the kernel's own generator instead
+          # of trying to link the whole SELinux object.
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 \
-            security/selinux/selinux.o
+            scripts/selinux/genheaders/genheaders
+          mkdir -p opd-out/security/selinux
+          opd-out/scripts/selinux/genheaders/genheaders \
+            opd-out/security/selinux/flask.h \
+            opd-out/security/selinux/av_permissions.h
           test -s opd-out/security/selinux/flask.h
           test -s opd-out/security/selinux/av_permissions.h
 
