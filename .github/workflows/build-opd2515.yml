@@ -116,7 +116,7 @@ jobs:
             src="$GITHUB_WORKSPACE/kernelsu/kernel" \
             ARCH=arm64 LLVM=1 CONFIG_KSU=m \
             CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y \
-            KCFLAGS="-I$GITHUB_WORKSPACE/opd-out/security/selinux" \
+            KCFLAGS="-I$GITHUB_WORKSPACE/opd-out/security/selinux -Wno-unused-variable" \
             KBUILD_EXTRA_SYMBOLS="$GITHUB_WORKSPACE/opd-inputs/vmlinux.symvers" modules
           llvm-objcopy --strip-unneeded \
             -R .comment -R .note.gnu.build-id -R .note.gnu.property \
