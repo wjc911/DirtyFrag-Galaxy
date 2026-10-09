@@ -111,6 +111,13 @@ jobs:
 
       - name: Build exact managerless KernelSU LKM
         run: |
+          # Android's 6.12 GKI module headers carry a vendor namespace
+          # implementation that emits an empty import descriptor for this
+          # external module.  The late-load loader resolves symbols manually;
+          # there is no namespace dependency to preserve in the generated
+          # mod.c, so drop only the optional metadata directive before
+          # invoking modpost.  This does not change the module code path.
+          sed -i '/^[[:space:]]*MODULE_IMPORT_NS(/d' kernelsu/kernel/core/init.c
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" \
             M="$GITHUB_WORKSPACE/kernelsu/kernel" \
             src="$GITHUB_WORKSPACE/kernelsu/kernel" \
