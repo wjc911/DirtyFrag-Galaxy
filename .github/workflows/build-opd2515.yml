@@ -118,6 +118,7 @@ jobs:
           # mod.c, so drop only the optional metadata directive before
           # invoking modpost.  This does not change the module code path.
           sed -i '/^[[:space:]]*MODULE_IMPORT_NS(/d' kernelsu/kernel/core/init.c
+          set +e
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" \
             M="$GITHUB_WORKSPACE/kernelsu/kernel" \
             src="$GITHUB_WORKSPACE/kernelsu/kernel" \
@@ -127,6 +128,17 @@ jobs:
             CONFIG_MODULE_SIG_PROTECT=n CONFIG_TRIM_UNUSED_KSYMS=n \
             KCFLAGS="-I$GITHUB_WORKSPACE/opd-out/security/selinux -Wno-unused-variable" \
             KBUILD_MODPOST_WARN=1 modules
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo '--- generated kernelsu.mod.c ---'
+            if [ -f kernelsu/kernel/kernelsu.mod.c ]; then
+              nl -ba kernelsu/kernel/kernelsu.mod.c | sed -n '1,120p'
+            else
+              echo 'generated file was not left on disk'
+            fi
+            exit "$rc"
+          fi
+          set -e
           llvm-objcopy --strip-unneeded \
             -R .comment -R .note.gnu.build-id -R .note.gnu.property \
             -R .note.Linux -R .note.GNU-stack -R .BTF -R .BTF.base \
