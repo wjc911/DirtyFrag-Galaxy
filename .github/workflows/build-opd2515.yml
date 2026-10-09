@@ -69,7 +69,7 @@ jobs:
           # the exact pair from this tree and expose the output directory to
           # the KernelSU module compile below.
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 \
-            security/selinux/flask.h
+            security/selinux/selinux.o
           test -s opd-out/security/selinux/flask.h
           test -s opd-out/security/selinux/av_permissions.h
 
