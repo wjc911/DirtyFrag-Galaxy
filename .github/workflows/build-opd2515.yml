@@ -144,7 +144,7 @@ jobs:
           sed -i 's#https://github.com/Kernel-SU/ksu_props#https://github.com/5ec1cff/resetprop-rs#g' \
             userspace/ksud/Cargo.toml
           sed -i 's#https://github.com/Kernel-SU/rustix#https://github.com/KernelSU-Next/rustix#g' \
-            userspace/ksud/Cargo.toml
+            userspace/ksuinit/Cargo.toml
           rustup update stable
           rustup target add aarch64-linux-android
           source .github/scripts/setup-rust-build.sh aarch64-linux-android 26
