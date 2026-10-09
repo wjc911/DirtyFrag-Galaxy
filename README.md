@@ -1,5 +1,16 @@
 # DirtyFrag-Galaxy
 
+## OPD2515 experimental fork
+
+The `opd2515` branch is a separate candidate for the OPPO Pad Mini (`OPD2515`).
+It rebuilds the Android 16 / 6.12.58 module against the exact GKI commit
+`7704a1ae279baec7789f6e19079cc4e80e62fa41` and refuses to run on another model
+or kernel. This is an engineering candidate, not a claim of a successful
+OPD2515 cold-boot test; the tablet must still be physically tested before the
+result can be called verified. The current app also retains the upstream
+KernelSU/KernelSU Next manager hand-off, so it is not yet a self-contained
+one-APK proof.
+
 <p align="right">
   <b>한국어</b> · <a href="README.en.md">English</a>
 </p>
