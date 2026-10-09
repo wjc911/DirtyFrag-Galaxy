@@ -22,7 +22,7 @@ jobs:
       - name: Install kernel build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bc bison flex libelf-dev libssl-dev cpio rsync python3
+          sudo apt-get install -y bc bison flex libelf-dev libssl-dev cpio rsync python3 clang llvm lld
 
       - name: Fetch exact Android common kernel source
         run: |
