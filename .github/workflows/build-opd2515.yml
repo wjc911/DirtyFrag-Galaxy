@@ -1,0 +1,98 @@
+name: Build OPD2515 exact Galaxy candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [opd2515]
+
+permissions:
+  contents: read
+
+env:
+  OPD_KERNEL_COMMIT: 7704a1ae279baec7789f6e19079cc4e80e62fa41
+  OPD_KERNEL_RELEASE: 6.12.58-android16-6-g7704a1ae279b-ab15213644-4k
+  OPD_BUILD_ID: 15213644
+
+jobs:
+  build-exact-ko:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kernel build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex libelf-dev libssl-dev cpio rsync python3
+
+      - name: Fetch exact Android common kernel source
+        run: |
+          git clone --filter=blob:none --no-checkout --single-branch --branch android16-6.12 \
+            https://android.googlesource.com/kernel/common opd-kernel
+          git -C opd-kernel fetch --depth=1 origin "$OPD_KERNEL_COMMIT"
+          git -C opd-kernel checkout --detach "$OPD_KERNEL_COMMIT"
+          test "$(git -C opd-kernel rev-parse HEAD)" = "$OPD_KERNEL_COMMIT"
+
+      - name: Fetch exact OPD2515 GKI build inputs
+        run: |
+          mkdir -p opd-inputs
+          base="https://ci.android.com/builds/submitted/${OPD_BUILD_ID}/kernel_aarch64/latest/raw"
+          curl --fail --retry 5 --retry-delay 2 -L "$base/kernel_aarch64_dot_config" -o opd-inputs/.config
+          curl --fail --retry 5 --retry-delay 2 -L "$base/vmlinux.symvers" -o opd-inputs/vmlinux.symvers
+          grep -q 'Linux/arm64 6.12.58 Kernel Configuration' opd-inputs/.config
+          sha256sum opd-inputs/.config opd-inputs/vmlinux.symvers
+
+      - name: Prepare exact kernel tree
+        run: |
+          mkdir -p opd-out
+          cp opd-inputs/.config opd-out/.config
+          make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 olddefconfig modules_prepare
+          cp opd-inputs/vmlinux.symvers opd-out/Module.symvers
+          test "$(make -s -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 kernelrelease)" = "$OPD_KERNEL_RELEASE"
+
+      - name: Build and verify exact OPD2515 module
+        run: |
+          make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" M="$GITHUB_WORKSPACE/lkm" \
+            ARCH=arm64 LLVM=1 KBUILD_EXTRA_SYMBOLS="$GITHUB_WORKSPACE/opd-out/Module.symvers" modules
+          llvm-objcopy --strip-unneeded \
+            -R .comment -R .note.gnu.build-id -R .note.gnu.property \
+            -R .note.Linux -R .note.GNU-stack -R .BTF -R .BTF.base \
+            -R .llvm_addrsig -R .hyp.text -R .hyp.bss -R .hyp.rodata \
+            -R .hyp.event_ids -R .hyp.patchable_function_entries \
+            -R .hyp.data lkm/dfroot.ko
+          mkdir -p app/src/main/jni/ko out
+          cp lkm/dfroot.ko app/src/main/jni/ko/dirtyfrag-android16-6.12.ko
+          cp lkm/dfroot.ko out/dirtyfrag-opd2515-6.12.ko
+          strings out/dirtyfrag-opd2515-6.12.ko | tee out/dirtyfrag-opd2515-strings.txt
+          grep -F "vermagic=$OPD_KERNEL_RELEASE" out/dirtyfrag-opd2515-strings.txt
+          grep -F 'name=dfroot' out/dirtyfrag-opd2515-strings.txt
+          sha256sum out/dirtyfrag-opd2515-6.12.ko
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dirtyfrag-galaxy-opd2515-ko
+          path: |
+            out/dirtyfrag-opd2515-6.12.ko
+            out/dirtyfrag-opd2515-strings.txt
+
+  build-apk:
+    needs: build-exact-ko
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dirtyfrag-galaxy-opd2515-ko
+          path: out
+      - name: Install exact OPD2515 module into the APK
+        run: cp out/dirtyfrag-opd2515-6.12.ko app/src/main/jni/ko/dirtyfrag-android16-6.12.ko
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build OPD2515 candidate APK
+        run: ./gradlew :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DirtyFrag-Galaxy-OPD2515-debug
+          path: app/build/outputs/apk/debug/dirtyfrag-galaxy.apk
