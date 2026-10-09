@@ -11,6 +11,11 @@ result can be called verified. The current app also retains the upstream
 KernelSU/KernelSU Next manager hand-off, so it is not yet a self-contained
 one-APK proof.
 
+The latest `opd2515` work-in-progress also builds a managerless KernelSU LKM
+and matching `ksud` inside the APK. A runtime module parameter grants only the
+embedding app's UID. This is still a candidate until the tablet completes a
+cold-boot test; a successful Actions build alone is not device verification.
+
 <p align="right">
   <b>한국어</b> · <a href="README.en.md">English</a>
 </p>
