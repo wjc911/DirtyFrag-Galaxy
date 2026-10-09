@@ -116,6 +116,8 @@ jobs:
             src="$GITHUB_WORKSPACE/kernelsu/kernel" \
             ARCH=arm64 LLVM=1 CONFIG_KSU=m \
             CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y \
+            CONFIG_EXTENDED_MODVERSIONS=n CONFIG_BASIC_MODVERSIONS=n \
+            CONFIG_MODULE_SIG_PROTECT=n CONFIG_TRIM_UNUSED_KSYMS=n \
             KCFLAGS="-I$GITHUB_WORKSPACE/opd-out/security/selinux -Wno-unused-variable" \
             KBUILD_MODPOST_WARN=1 modules
           llvm-objcopy --strip-unneeded \
