@@ -64,6 +64,14 @@ jobs:
           echo "expected kernel release: $OPD_KERNEL_RELEASE"
           echo "actual kernel release:   $actual_release"
           test "$actual_release" = "$OPD_KERNEL_RELEASE"
+          # External modules include SELinux's generated private headers, but
+          # a source archive plus modules_prepare does not build them.  Build
+          # the exact pair from this tree and expose the output directory to
+          # the KernelSU module compile below.
+          make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 \
+            security/selinux/flask.h
+          test -s opd-out/security/selinux/flask.h
+          test -s opd-out/security/selinux/av_permissions.h
 
       - name: Build and verify exact OPD2515 module
         run: |
@@ -102,6 +110,7 @@ jobs:
             src="$GITHUB_WORKSPACE/kernelsu/kernel" \
             ARCH=arm64 LLVM=1 CONFIG_KSU=m \
             CONFIG_KSU_DISABLE_MANAGER=y CONFIG_KSU_DISABLE_POLICY=y \
+            KCFLAGS="-I$GITHUB_WORKSPACE/opd-out/security/selinux" \
             KBUILD_EXTRA_SYMBOLS="$GITHUB_WORKSPACE/opd-inputs/vmlinux.symvers" modules
           llvm-objcopy --strip-unneeded \
             -R .comment -R .note.gnu.build-id -R .note.gnu.property \
