@@ -48,6 +48,22 @@ jobs:
         run: |
           mkdir -p opd-out
           cp opd-inputs/.config opd-out/.config
+          # Android's modpost emits an empty initializer for the extended
+          # symbol-name table when the supplied GKI symbol dump contains no
+          # matching CRCs.  Clang rejects the resulting `= ;` in an external
+          # module descriptor.  An empty string is byte-for-byte equivalent
+          # for the late-load/manual-relocation path and remains valid when
+          # names are present (adjacent string literals concatenate).
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("opd-kernel/scripts/mod/modpost.c")
+          s = p.read_text()
+          old = 'buf_printf(b, "__used __section(\\"__version_ext_names\\") =\\n");'
+          new = 'buf_printf(b, "__used __section(\\"__version_ext_names\\") = \\"\\"\\n");'
+          if s.count(old) != 1:
+              raise SystemExit("modpost extended-name emission pattern not found exactly once")
+          p.write_text(s.replace(old, new))
+          PY
           # The Android CI kernel release includes the Android build suffix in
           # CONFIG_LOCALVERSION.  The source archive has no git metadata, so
           # set that value explicitly before olddefconfig; otherwise a plain
