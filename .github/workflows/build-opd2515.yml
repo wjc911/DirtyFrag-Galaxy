@@ -11,6 +11,7 @@ permissions:
 env:
   OPD_KERNEL_COMMIT: 7704a1ae279baec7789f6e19079cc4e80e62fa41
   OPD_KERNEL_RELEASE: 6.12.58-android16-6-g7704a1ae279b-ab15213644-4k
+  OPD_KERNEL_LOCALVERSION: -android16-6-g7704a1ae279b-ab15213644-4k
   OPD_BUILD_ID: 15213644
 
 jobs:
@@ -47,6 +48,13 @@ jobs:
         run: |
           mkdir -p opd-out
           cp opd-inputs/.config opd-out/.config
+          # The Android CI kernel release includes the Android build suffix in
+          # CONFIG_LOCALVERSION.  The source archive has no git metadata, so
+          # set that value explicitly before olddefconfig; otherwise a plain
+          # GKI prepare reports only 6.12.58-4k and the module vermagic would
+          # not match the tablet's uname -r.
+          sed -i '/^CONFIG_LOCALVERSION=/d' opd-out/.config
+          printf 'CONFIG_LOCALVERSION="%s"\n' "$OPD_KERNEL_LOCALVERSION" >> opd-out/.config
           make -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 olddefconfig modules_prepare
           cp opd-inputs/vmlinux.symvers opd-out/Module.symvers
           actual_release="$(make -s -C opd-kernel O="$GITHUB_WORKSPACE/opd-out" ARCH=arm64 LLVM=1 kernelrelease)"
