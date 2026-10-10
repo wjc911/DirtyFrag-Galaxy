@@ -60,9 +60,9 @@ sh_path:
 sh_c_flag:
     .asciz "-c"
 sh_cmd_noreboot:
-    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name me.weishu.kernelsu --stage-from /data/system/ksud --ro-partitions & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current"
+    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name me.weishu.kernelsu & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current"
 sh_cmd_reboot:
-    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name me.weishu.kernelsu --stage-from /data/system/ksud --ro-partitions & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current; setsid /system/bin/su -c \"/system/bin/su -c '/data/adb/ksud post-fs-data; /data/adb/ksud services; sleep 3; /data/adb/ksud soft-reboot'\""
+    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name me.weishu.kernelsu & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current; setsid /system/bin/su -c \"/system/bin/su -c '/data/adb/ksud post-fs-data; /data/adb/ksud services; sleep 3; /data/adb/ksud soft-reboot'\""
 
     .balign 4
     // Runtime-overwritten shell command. exp.c copies the resolved manager
@@ -72,7 +72,7 @@ sh_cmd_reboot:
 libc_cmd_buf_off:
     .int cmd_buf - libc_data
 cmd_buf:
-    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name com.rifsxd.ksunext --stage-from /data/system/ksud --ro-partitions & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current"
+    .asciz "exec >/dev/null 2>&1; /system/bin/logcat late-load --package-name com.rifsxd.ksunext & sleep 8; echo u:r:ksu:s0 > /proc/self/attr/current"
     .space 320
 
     .balign 4
