@@ -71,6 +71,19 @@ object SysUtil {
         model = Build.MODEL ?: "",
         firmware = Build.DISPLAY ?: Build.ID ?: "",
         androidRelease = Build.VERSION.RELEASE ?: "",
-        kernel = prop("ro.kernel.version").ifEmpty { System.getProperty("os.version").orEmpty() }
+        // On this ColorOS build the vendor property and Java's os.version are
+        // shortened to `6.12`; the exploit gate needs the complete uname
+        // release suffix, so prefer the kernel's own output.
+        kernel = kernelRelease()
     )
+
+    fun kernelRelease(): String {
+        val uname = exec("uname -r", 2_000).out
+            .lineSequence()
+            .map { it.trim() }
+            .firstOrNull { it.isNotEmpty() }
+        return uname ?: prop("ro.kernel.version").ifEmpty {
+            System.getProperty("os.version").orEmpty()
+        }
+    }
 }
